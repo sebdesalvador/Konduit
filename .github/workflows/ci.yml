@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The library multi-targets net8.0 and net10.0, so both SDKs are installed;
       # the solution builds warning-free and Directory.Build.props treats warnings
