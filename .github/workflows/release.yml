@@ -105,13 +105,28 @@ jobs:
         with:
           user: ${{ vars.NUGET_USER }}
 
-      # The symbol package next to the .nupkg is pushed automatically by the client.
+      # Pushed one at a time, newest package first, rather than by glob.
+      #
+      # A publish cannot be undone, so the ordering is deliberate: a glob pushes alphabetically,
+      # which would publish Konduit before Konduit.MediatR and leave a half-released version behind
+      # if the second push were rejected — for instance by a trusted publisher glob that does not
+      # cover the newer package. Pushing the less proven package first means such a failure happens
+      # before anything is published.
+      #
+      # The symbol package next to each .nupkg is pushed automatically by the client.
       - name: Push to nuget.org
-        run: >
-          dotnet nuget push "artifacts/packages/*.nupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
-          --skip-duplicate
+        run: |
+          set -euo pipefail
+          for package in \
+            artifacts/packages/Konduit.MediatR.*.nupkg \
+            artifacts/packages/Konduit.[0-9]*.nupkg
+          do
+            echo "Pushing $package"
+            dotnet nuget push "$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+              --skip-duplicate
+          done
 
       - name: Create GitHub release
         if: github.event_name == 'push'
