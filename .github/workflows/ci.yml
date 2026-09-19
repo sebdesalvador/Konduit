@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The library multi-targets net8.0 and net10.0, so both SDKs are installed;
+      # the solution builds warning-free and Directory.Build.props treats warnings
+      # as errors, so a new warning fails the build here.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test --no-build --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --collect "XPlat Code Coverage"
+          --results-directory artifacts/test-results
+
+      # Packing on every build catches analyzer-packaging breakage early: the
+      # generator ships inside the Konduit package and is easy to drop silently.
+      - name: Pack
+        run: dotnet pack src/Konduit/Konduit.csproj --no-build --configuration Release --output artifacts/packages
+
+      - name: Verify the generator is in the package
+        run: |
+          set -euo pipefail
+          package=$(ls artifacts/packages/Konduit.*.nupkg)
+          echo "Inspecting $package"
+          unzip -l "$package" | grep -q 'analyzers/dotnet/cs/Konduit.SourceGeneration.dll'
+          unzip -l "$package" | grep -q 'lib/net8.0/Konduit.dll'
+          unzip -l "$package" | grep -q 'lib/net10.0/Konduit.dll'
+          echo "Package layout is correct."
+
+      - name: Upload packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/packages/*
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: artifacts/test-results/**

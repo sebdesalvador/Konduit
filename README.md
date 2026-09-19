@@ -1,5 +1,8 @@
 # Konduit
 
+[![CI](https://github.com/sebdesalvador/Konduit/actions/workflows/ci.yml/badge.svg)](https://github.com/sebdesalvador/Konduit/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/Konduit.svg)](https://www.nuget.org/packages/Konduit)
+
 ASP.NET Core style middleware pipelines for any dependency-injected service.
 
 Register a service the way you already do, and chain `WithMiddleware<T>()` to wrap every call to it:

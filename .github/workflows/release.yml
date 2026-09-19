@@ -1,0 +1,79 @@
+name: Release
+
+# Publishing to nuget.org is permanent: a version can never be deleted, only
+# unlisted, and the package name is claimed for good. This workflow therefore
+# runs only from an explicit tag or a manual dispatch, and is gated on the
+# "nuget" environment so required reviewers can be added in repository settings.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, without a leading v (e.g. 0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish to nuget.org
+    runs-on: ubuntu-latest
+    environment: nuget
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$version' is not a valid semantic version." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $version"
+
+      - name: Build
+        run: dotnet build --configuration Release -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+
+      - name: Pack
+        run: >
+          dotnet pack src/Konduit/Konduit.csproj
+          --no-build --configuration Release
+          -p:Version=${{ steps.version.outputs.version }}
+          --output artifacts/packages
+
+      # The symbol package next to the .nupkg is pushed automatically by the client.
+      - name: Push to nuget.org
+        run: >
+          dotnet nuget push "artifacts/packages/*.nupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --skip-duplicate
+        env:
+          DOTNET_NOLOGO: 'true'
+
+      - name: Create GitHub release
+        if: github.event_name == 'push'
+        run: gh release create "${GITHUB_REF_NAME}" artifacts/packages/*.nupkg --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
