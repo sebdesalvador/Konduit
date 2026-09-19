@@ -89,6 +89,21 @@ jobs:
             exit 1
           fi
 
+      # Diagnostic: prints the claims nuget.org matches a trusted publisher policy
+      # against. Only the decoded claim fields are printed, never the token itself.
+      - name: Show the OIDC claims sent to nuget.org
+        run: |
+          set -euo pipefail
+          token=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https%3A%2F%2Fwww.nuget.org" | jq -r '.value')
+          payload=$(printf '%s' "$token" | cut -d. -f2)
+          case $(( ${#payload} % 4 )) in
+            2) payload="${payload}==" ;;
+            3) payload="${payload}=" ;;
+          esac
+          printf '%s' "$payload" | tr '_-' '/+' | base64 -d 2>/dev/null \
+            | jq '{aud, repository, repository_owner, workflow_ref, job_workflow_ref, environment, ref, sub}'
+
       - name: Log in to nuget.org
         id: nuget-login
         uses: NuGet/login@v1
