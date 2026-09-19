@@ -4,6 +4,12 @@ name: Release
 # unlisted, and the package name is claimed for good. This workflow therefore
 # runs only from an explicit tag or a manual dispatch, and is gated on the
 # "nuget" environment so required reviewers can be added in repository settings.
+#
+# Authentication uses NuGet trusted publishing: the job proves its identity to
+# nuget.org with a GitHub OIDC token and receives an API key that expires in
+# minutes, so there is no long-lived secret to leak or rotate. The trusted
+# publisher policy on nuget.org must name this repository, this workflow file
+# (release.yml) and the "nuget" environment, or the exchange is refused.
 
 on:
   push:
@@ -17,6 +23,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   publish:
@@ -62,15 +69,36 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }}
           --output artifacts/packages
 
+      # Fail here rather than after publishing: a bad package cannot be taken back.
+      - name: Verify the generator is in the package
+        run: |
+          set -euo pipefail
+          package=$(ls artifacts/packages/Konduit.*.nupkg)
+          unzip -l "$package" | grep -q 'analyzers/dotnet/cs/Konduit.SourceGeneration.dll'
+          unzip -l "$package" | grep -q 'lib/net8.0/Konduit.dll'
+          unzip -l "$package" | grep -q 'lib/net10.0/Konduit.dll'
+          echo "Package layout is correct."
+
+      - name: Check the NuGet account is configured
+        run: |
+          if [ -z "${{ vars.NUGET_USER }}" ]; then
+            echo "::error::Repository variable NUGET_USER is not set. Set it to your nuget.org username with: gh variable set NUGET_USER" >&2
+            exit 1
+          fi
+
+      - name: Log in to nuget.org
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       # The symbol package next to the .nupkg is pushed automatically by the client.
       - name: Push to nuget.org
         run: >
           dotnet nuget push "artifacts/packages/*.nupkg"
           --source https://api.nuget.org/v3/index.json
-          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
           --skip-duplicate
-        env:
-          DOTNET_NOLOGO: 'true'
 
       - name: Create GitHub release
         if: github.event_name == 'push'
