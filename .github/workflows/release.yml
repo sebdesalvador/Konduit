@@ -79,10 +79,13 @@ jobs:
           unzip -l "$package" | grep -q 'lib/net10.0/Konduit.dll'
           echo "Package layout is correct."
 
+      # NUGET_USER is the nuget.org account that CREATED the trusted publisher
+      # policy, which is not necessarily the account that owns the package.
       - name: Check the NuGet account is configured
         run: |
-          if [ -z "${{ vars.NUGET_USER }}" ]; then
-            echo "::error::Repository variable NUGET_USER is not set. Set it to your nuget.org username with: gh variable set NUGET_USER" >&2
+          user="${{ vars.NUGET_USER }}"
+          if [ -z "$user" ] || [ "$user" = "your-nuget-username" ]; then
+            echo "::error::Repository variable NUGET_USER is unset or still the placeholder. Set it to the nuget.org username that created the trusted publisher policy: gh variable set NUGET_USER --body '<username>'" >&2
             exit 1
           fi
 
