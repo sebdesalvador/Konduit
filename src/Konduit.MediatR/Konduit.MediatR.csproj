@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>Konduit.MediatR</RootNamespace>
+    <AssemblyName>Konduit.MediatR</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      Handlers are discovered and closed over at run time with MakeGenericType, so this package
+      cannot be trimmed or AOT-compiled. The public entry point is annotated accordingly.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Konduit.MediatR</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Sébastien de Salvador</Authors>
+    <Copyright>Copyright (c) 2026 Sébastien de Salvador</Copyright>
+    <Description>Runs MediatR handlers through a Konduit middleware pipeline. One registration call wraps every handler discovered by MediatR's assembly scanning, so the same middleware you use for ordinary services also wraps commands, queries, notifications and streams.</Description>
+    <PackageTags>mediatr;dependency-injection;middleware;interception;cqrs;konduit</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/sebdesalvador/Konduit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sebdesalvador/Konduit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      PrivateAssets="none" so the Konduit source generator flows transitively. The default for a
+      ProjectReference makes analyzers private, which would leave anyone installing only
+      Konduit.MediatR without the generator, and their WithMiddleware calls failing at run time.
+    -->
+    <ProjectReference Include="../Konduit/Konduit.csproj" PrivateAssets="none" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

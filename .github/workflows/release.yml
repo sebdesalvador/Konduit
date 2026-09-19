@@ -63,21 +63,31 @@ jobs:
         run: dotnet test --no-build --configuration Release
 
       - name: Pack
-        run: >
-          dotnet pack src/Konduit/Konduit.csproj
-          --no-build --configuration Release
-          -p:Version=${{ steps.version.outputs.version }}
-          --output artifacts/packages
+        run: |
+          dotnet pack src/Konduit/Konduit.csproj \
+            --no-build --configuration Release \
+            -p:Version=${{ steps.version.outputs.version }} \
+            --output artifacts/packages
+          dotnet pack src/Konduit.MediatR/Konduit.MediatR.csproj \
+            --no-build --configuration Release \
+            -p:Version=${{ steps.version.outputs.version }} \
+            --output artifacts/packages
 
       # Fail here rather than after publishing: a bad package cannot be taken back.
-      - name: Verify the generator is in the package
+      - name: Verify the package layouts
         run: |
           set -euo pipefail
-          package=$(ls artifacts/packages/Konduit.*.nupkg)
-          unzip -l "$package" | grep -q 'analyzers/dotnet/cs/Konduit.SourceGeneration.dll'
-          unzip -l "$package" | grep -q 'lib/net8.0/Konduit.dll'
-          unzip -l "$package" | grep -q 'lib/net10.0/Konduit.dll'
-          echo "Package layout is correct."
+
+          core=$(ls artifacts/packages/Konduit.[0-9]*.nupkg)
+          unzip -l "$core" | grep -q 'analyzers/dotnet/cs/Konduit.SourceGeneration.dll'
+          unzip -l "$core" | grep -q 'lib/net8.0/Konduit.dll'
+          unzip -l "$core" | grep -q 'lib/net10.0/Konduit.dll'
+
+          mediatr=$(ls artifacts/packages/Konduit.MediatR.*.nupkg)
+          unzip -l "$mediatr" | grep -q 'lib/net8.0/Konduit.MediatR.dll'
+          unzip -l "$mediatr" | grep -q 'lib/net10.0/Konduit.MediatR.dll'
+
+          echo "Package layouts are correct."
 
       # NUGET_USER is the nuget.org account that CREATED the trusted publisher
       # policy, which is not necessarily the account that owns the package.

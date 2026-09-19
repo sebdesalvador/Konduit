@@ -43,17 +43,27 @@ jobs:
       # Packing on every build catches analyzer-packaging breakage early: the
       # generator ships inside the Konduit package and is easy to drop silently.
       - name: Pack
-        run: dotnet pack src/Konduit/Konduit.csproj --no-build --configuration Release --output artifacts/packages
+        run: |
+          dotnet pack src/Konduit/Konduit.csproj --no-build --configuration Release --output artifacts/packages
+          dotnet pack src/Konduit.MediatR/Konduit.MediatR.csproj --no-build --configuration Release --output artifacts/packages
 
-      - name: Verify the generator is in the package
+      - name: Verify the package layouts
         run: |
           set -euo pipefail
-          package=$(ls artifacts/packages/Konduit.*.nupkg)
-          echo "Inspecting $package"
-          unzip -l "$package" | grep -q 'analyzers/dotnet/cs/Konduit.SourceGeneration.dll'
-          unzip -l "$package" | grep -q 'lib/net8.0/Konduit.dll'
-          unzip -l "$package" | grep -q 'lib/net10.0/Konduit.dll'
-          echo "Package layout is correct."
+
+          # Konduit.[0-9]* matches the core package without also matching Konduit.MediatR.
+          core=$(ls artifacts/packages/Konduit.[0-9]*.nupkg)
+          echo "Inspecting $core"
+          unzip -l "$core" | grep -q 'analyzers/dotnet/cs/Konduit.SourceGeneration.dll'
+          unzip -l "$core" | grep -q 'lib/net8.0/Konduit.dll'
+          unzip -l "$core" | grep -q 'lib/net10.0/Konduit.dll'
+
+          mediatr=$(ls artifacts/packages/Konduit.MediatR.*.nupkg)
+          echo "Inspecting $mediatr"
+          unzip -l "$mediatr" | grep -q 'lib/net8.0/Konduit.MediatR.dll'
+          unzip -l "$mediatr" | grep -q 'lib/net10.0/Konduit.MediatR.dll'
+
+          echo "Package layouts are correct."
 
       - name: Upload packages
         if: always()

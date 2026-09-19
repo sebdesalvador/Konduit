@@ -184,6 +184,23 @@ compile down to a direct forward.
 
 The library is trim- and AOT-compatible.
 
+## MediatR
+
+MediatR discovers handlers by scanning assemblies, so there is no registration call to chain
+`WithMiddleware<T>()` onto. The companion package **[Konduit.MediatR](src/Konduit.MediatR/README.md)**
+adds one call that wraps everything MediatR found:
+
+```csharp
+services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+services.AddKonduitToMediatRHandlers()
+        .WithMiddleware<LoggingMiddleware>()
+        .WithMiddleware<RetryMiddleware>();
+```
+
+Commands, queries, notifications and streams all run through the same middleware you write for
+ordinary services, with `[SkipKonduit]` opting a handler out.
+
 ## Requirements
 
 .NET 8 or later. The source generator ships inside the `Konduit` package; no separate reference is
