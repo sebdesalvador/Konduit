@@ -166,4 +166,52 @@ public sealed class ImplementationSkipTests
         Assert.Empty(result.CompilationErrors);
         Assert.Equal(2, result.GeneratedSources.Length);
     }
+
+    [Fact]
+    public void AFactoryOverloadThatNamesTheImplementationIsRead()
+    {
+        // AddScoped<TService, TImplementation>(factory) still names the implementation, so the
+        // attribute on it is visible even though a lambda constructs the instance.
+        var result = Run("""
+            public sealed class Greeter : IGreeter
+            {
+                public string Greet(string name) => name;
+                [SkipKonduit] public string Ping() => "pong";
+            }
+
+            public static class Startup
+            {
+                public static void Configure(IServiceCollection services) =>
+                    services.AddScoped<IGreeter, Greeter>(_ => new Greeter()).WithMiddleware<Noop>();
+            }
+            """);
+
+        Assert.Empty(result.GeneratorDiagnostics);
+        Assert.Equal(3, result.GeneratedSources.Length);
+        Assert.Contains("=> _target.Ping();", result.AllGeneratedSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFactoryOverloadWithoutTheImplementationCannotBeRead()
+    {
+        // AddScoped<TService>(factory) names no implementation, so only the shared proxy exists and
+        // the attribute on Greeter is invisible to the generator.
+        var result = Run("""
+            public sealed class Greeter : IGreeter
+            {
+                public string Greet(string name) => name;
+                [SkipKonduit] public string Ping() => "pong";
+            }
+
+            public static class Startup
+            {
+                public static void Configure(IServiceCollection services) =>
+                    services.AddScoped<IGreeter>(_ => new Greeter()).WithMiddleware<Noop>();
+            }
+            """);
+
+        Assert.Empty(result.GeneratorDiagnostics);
+        Assert.Equal(2, result.GeneratedSources.Length);
+        Assert.DoesNotContain("=> _target.Ping();", result.AllGeneratedSource, StringComparison.Ordinal);
+    }
 }

@@ -39,4 +39,5 @@ The interesting part is the contrast with a `DelegatingHandler`, which runs in t
 - the **handler** adds a correlation header underneath both, on every attempt
 
 It also shows `[SkipKonduit]` on the *implementation*, because the client interface is the kind you
-would get from a generated contract and cannot annotate.
+would get from a generated contract and cannot annotate, and a **named** client behaving exactly
+like an unnamed one.

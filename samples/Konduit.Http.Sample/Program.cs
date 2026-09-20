@@ -28,5 +28,17 @@ Console.WriteLine("[SkipKonduit] on the implementation — no middleware, HTTP s
 Console.WriteLine($"  result: {await api.PingAsync(CancellationToken.None)}");
 
 Console.WriteLine();
+Console.WriteLine("A NAMED client works the same way — the name changes nothing:");
+
+var named = new ServiceCollection();
+named.AddHttpClient<IOrderApi, OrderApi>("orders", c => c.BaseAddress = new Uri("https://api.example.test"))
+    .ConfigurePrimaryHttpMessageHandler(() => new FakeBackend())
+    .AddMiddleware<LoggingMiddleware>()
+    .AddMiddleware<RetryMiddleware>();
+
+var namedApi = named.BuildServiceProvider().GetRequiredService<IOrderApi>();
+Console.WriteLine($"  result: {await namedApi.GetAsync(1, CancellationToken.None)}");
+
+Console.WriteLine();
 Console.WriteLine($"The resolved service is a generated proxy: {api.GetType().Name}");
 Console.WriteLine($"It wraps the real typed client:            {((IKonduitProxy)api).KonduitTarget.GetType().Name}");

@@ -132,13 +132,17 @@ The fix is to put the middleware on the service that *uses* the named client:
 ```csharp
 services.AddHttpClient("orders", c => c.BaseAddress = new Uri("..."));
 
-services.AddScoped<IOrderApi>(sp =>
+services.AddScoped<IOrderApi, OrderApi>(sp =>
             new OrderApi(sp.GetRequiredService<IHttpClientFactory>().CreateClient("orders")))
         .WithMiddleware<LoggingMiddleware>();
 ```
 
 That is core Konduit's `WithMiddleware<T>()` on a factory registration — the named client keeps its
 own HTTP configuration, and the service in front of it gets the pipeline.
+
+Note the **two** type arguments. `AddScoped<IOrderApi>(factory)` would work just as well for the
+middleware, but it names no implementation, so a `[SkipKonduit]` on `OrderApi` would be invisible to
+the generator. Naming it costs nothing and keeps that working.
 
 ## How the client is found
 

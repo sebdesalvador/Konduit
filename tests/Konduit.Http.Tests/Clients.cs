@@ -75,3 +75,22 @@ public sealed class InnerMiddleware(KonduitDelegate next, Recorder recorder) : I
         recorder.Calls.Add("inner:after");
     }
 }
+
+/// <summary>Stands in for a generated contract that cannot be annotated.</summary>
+public interface IInvoiceApi
+{
+    Task<string> GetAsync(int id, CancellationToken cancellationToken);
+
+    Task<string> PingAsync(CancellationToken cancellationToken);
+}
+
+public sealed class InvoiceApi(HttpClient http) : IInvoiceApi
+{
+    public Task<string> GetAsync(int id, CancellationToken cancellationToken) =>
+        http.GetStringAsync($"/invoices/{id}", cancellationToken);
+
+    // The interface cannot carry the attribute, so the implementation does.
+    [SkipKonduit]
+    public Task<string> PingAsync(CancellationToken cancellationToken) =>
+        http.GetStringAsync("/ping", cancellationToken);
+}

@@ -118,10 +118,20 @@ services.AddScoped<IThirdPartyStorage, OurStorage>().WithMiddleware<LoggingMiddl
 ```
 
 That applies to `OurStorage` alone — another implementation behind the same interface keeps every
-method intercepted. It works because the registration **names the implementation**, so the generator
-can read it: `AddScoped<IFoo, Foo>()`, `AddScoped(typeof(IFoo), typeof(Foo))` and
-`AddHttpClient<IFoo, Foo>()` all qualify. An implementation that only ever appears inside a factory
-lambda, and is never named in any registration the generator can see, keeps its methods intercepted.
+method intercepted.
+
+It works because the registration **names the implementation**, which is the only thing to check:
+
+```csharp
+services.AddScoped<IFoo, Foo>()                         // ✅ named
+services.AddScoped(typeof(IFoo), typeof(Foo))           // ✅ named
+services.AddHttpClient<IFoo, Foo>()                     // ✅ named
+services.AddScoped<IFoo, Foo>(sp => new Foo(...))       // ✅ named, even with a factory
+services.AddScoped<IFoo>(sp => new Foo(...))            // ❌ not named
+```
+
+Only the last form hides it. If you build the instance yourself and want the attribute honoured, use
+the two-type-parameter factory overload — same lambda, one more type argument.
 
 **Properties, indexers and events are forwarded without interception.** So are methods Konduit
 cannot proxy — each one produces a build warning naming the method and the reason, so nothing is
