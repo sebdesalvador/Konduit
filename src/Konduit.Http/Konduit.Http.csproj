@@ -10,7 +10,7 @@
 
   <PropertyGroup>
     <PackageId>Konduit.Http</PackageId>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Authors>Sébastien de Salvador</Authors>
     <Copyright>Copyright (c) 2026 Sébastien de Salvador</Copyright>
     <Description>Adds Konduit middleware to typed HttpClient services. Chain AddMiddleware&lt;T&gt;() onto AddHttpClient&lt;TClient, TImplementation&gt;() to wrap calls to the client itself, rather than adding a DelegatingHandler to the underlying HttpClient.</Description>

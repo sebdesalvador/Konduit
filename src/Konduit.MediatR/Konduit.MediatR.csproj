@@ -14,7 +14,7 @@
 
   <PropertyGroup>
     <PackageId>Konduit.MediatR</PackageId>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Authors>Sébastien de Salvador</Authors>
     <Copyright>Copyright (c) 2026 Sébastien de Salvador</Copyright>
     <Description>Runs MediatR handlers through a Konduit middleware pipeline. One registration call wraps every handler discovered by MediatR's assembly scanning, so the same middleware you use for ordinary services also wraps commands, queries, notifications and streams.</Description>
