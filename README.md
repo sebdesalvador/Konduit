@@ -242,6 +242,17 @@ Typed clients registered under a name work the same way. A **bare** named client
 (`AddHttpClient("orders")`) registers no interface, so there are no method calls to intercept; put
 the middleware on the service that consumes it instead.
 
+## Samples
+
+Three runnable console apps under [samples/](samples/README.md), one per package, printing what the
+pipeline did at each step:
+
+```bash
+dotnet run --project samples/Konduit.Sample
+dotnet run --project samples/Konduit.MediatR.Sample
+dotnet run --project samples/Konduit.Http.Sample
+```
+
 ## Requirements
 
 Konduit targets `netstandard2.0`, `net8.0` and `net10.0`, so it runs on **.NET Framework 4.6.1+,
