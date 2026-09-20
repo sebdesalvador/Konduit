@@ -11,12 +11,13 @@ internal static partial class ProxySpecFactory
         IMethodSymbol method,
         int ordinal,
         INamedTypeSymbol serviceInterface,
+        INamedTypeSymbol? implementation,
         KnownTypes known,
         Location location,
         List<DiagnosticInfo> diagnostics)
     {
-        var skipped = method.GetAttributes().Any(attribute =>
-            SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, known.SkipKonduitAttribute));
+        var skipped = HasSkipAttribute(method, known)
+            || HasSkipAttribute(implementation?.FindImplementationForInterfaceMember(method), known);
 
         var blocker = DescribeInterceptionBlocker(method);
 
@@ -44,6 +45,18 @@ internal static partial class ProxySpecFactory
             EquatableArray<string>.From(method.TypeParameters.Select(BuildConstraintClause).Where(c => c is not null)!),
             skipped || blocker is not null);
     }
+
+    /// <summary>
+    /// Reports whether a member carries <c>[SkipKonduit]</c>.
+    /// </summary>
+    /// <remarks>
+    /// Checked on the interface method and on the method that implements it, because an interface
+    /// from a package you cannot edit leaves the implementation as the only place to put it.
+    /// </remarks>
+    private static bool HasSkipAttribute(ISymbol? member, KnownTypes known) =>
+        member is not null
+        && member.GetAttributes().Any(attribute =>
+            SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, known.SkipKonduitAttribute));
 
     private static ParameterSpec CreateParameter(IParameterSymbol parameter, KnownTypes known) =>
         new(

@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -43,6 +44,8 @@ internal static class RegistrationFinder
         if (access.Name is GenericNameSyntax { TypeArgumentList.Arguments.Count: 2 }
             && model.GetSymbolInfo(withMiddleware, cancellationToken).Symbol is IMethodSymbol { TypeArguments.Length: 2 } explicitCall)
         {
+            // The second argument of AddMiddleware<TClient, TMiddleware>() is the middleware, not an
+            // implementation, so nothing is inferred from it here.
             return Validate(explicitCall.TypeArguments[0], withMiddleware.GetLocation());
         }
 
@@ -71,11 +74,11 @@ internal static class RegistrationFinder
             {
                 sawRegistrationCall = true;
 
-                var candidate = ResolveServiceType(invocation, model, cancellationToken);
+                var (candidate, implementation) = ResolveTypes(invocation, model, cancellationToken);
 
                 if (candidate is { TypeKind: TypeKind.Interface })
                 {
-                    return RegistrationMatch.Succeeded(candidate);
+                    return RegistrationMatch.Succeeded(candidate, ImplementationOf(candidate, implementation));
                 }
 
                 if (candidate is not null && nonInterface is null)
@@ -110,42 +113,78 @@ internal static class RegistrationFinder
         }
 
         return named.TypeKind == TypeKind.Interface
-            ? RegistrationMatch.Succeeded(named)
+            ? RegistrationMatch.Succeeded(named, null)
             : RegistrationMatch.Failed(DiagnosticInfo.Create(
                 KonduitDiagnostics.ServiceTypeMustBeAnInterface,
                 location,
                 named.ToDisplayString()));
     }
 
-    private static INamedTypeSymbol? ResolveServiceType(
+    /// <summary>
+    /// Reads the service type, and the implementation type where the registration names one.
+    /// </summary>
+    /// <remarks>
+    /// The implementation matters because <see cref="Konduit.SkipKonduitAttribute"/> may sit on the
+    /// implementing method rather than the interface, which is the only option when the interface
+    /// comes from a package you cannot edit.
+    /// </remarks>
+    private static (INamedTypeSymbol? Service, INamedTypeSymbol? Implementation) ResolveTypes(
         InvocationExpressionSyntax registration,
         SemanticModel model,
         CancellationToken cancellationToken)
     {
         if (model.GetSymbolInfo(registration, cancellationToken).Symbol is IMethodSymbol { TypeArguments.Length: > 0 } method)
         {
-            return method.TypeArguments[0] as INamedTypeSymbol;
+            return (
+                method.TypeArguments[0] as INamedTypeSymbol,
+                method.TypeArguments.Length > 1 ? method.TypeArguments[1] as INamedTypeSymbol : null);
         }
 
         // Non-generic registrations such as AddScoped(typeof(IOrderService), typeof(OrderService)).
-        var first = registration.ArgumentList.Arguments.Count > 0
-            ? registration.ArgumentList.Arguments[0].Expression
-            : null;
-
-        return first is TypeOfExpressionSyntax typeOf
-            ? model.GetTypeInfo(typeOf.Type, cancellationToken).Type as INamedTypeSymbol
-            : null;
+        return (
+            TypeOfArgument(registration, 0, model, cancellationToken),
+            TypeOfArgument(registration, 1, model, cancellationToken));
     }
+
+    private static INamedTypeSymbol? TypeOfArgument(
+        InvocationExpressionSyntax registration,
+        int index,
+        SemanticModel model,
+        CancellationToken cancellationToken) =>
+        registration.ArgumentList.Arguments.Count > index
+            && registration.ArgumentList.Arguments[index].Expression is TypeOfExpressionSyntax typeOf
+                ? model.GetTypeInfo(typeOf.Type, cancellationToken).Type as INamedTypeSymbol
+                : null;
+
+    /// <summary>
+    /// Accepts a candidate implementation only when it really implements the service.
+    /// </summary>
+    /// <remarks>
+    /// A second type argument is not always an implementation — <c>AddMiddleware&lt;TClient,
+    /// TMiddleware&gt;()</c> names the middleware there — so it is checked rather than assumed.
+    /// </remarks>
+    private static INamedTypeSymbol? ImplementationOf(INamedTypeSymbol serviceType, INamedTypeSymbol? candidate) =>
+        candidate is { TypeKind: TypeKind.Class }
+            && candidate.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, serviceType))
+                ? candidate
+                : null;
 }
 
-/// <summary>The outcome of walking one <c>WithMiddleware&lt;T&gt;()</c> chain.</summary>
-internal readonly struct RegistrationMatch(INamedTypeSymbol? serviceType, DiagnosticInfo? diagnostic)
+/// <summary>The outcome of walking one middleware chain back to its registration.</summary>
+internal readonly struct RegistrationMatch(
+    INamedTypeSymbol? serviceType,
+    INamedTypeSymbol? implementationType,
+    DiagnosticInfo? diagnostic)
 {
     public INamedTypeSymbol? ServiceType { get; } = serviceType;
 
+    /// <summary>The implementation the registration named, when it named one.</summary>
+    public INamedTypeSymbol? ImplementationType { get; } = implementationType;
+
     public DiagnosticInfo? Diagnostic { get; } = diagnostic;
 
-    public static RegistrationMatch Succeeded(INamedTypeSymbol serviceType) => new(serviceType, null);
+    public static RegistrationMatch Succeeded(INamedTypeSymbol serviceType, INamedTypeSymbol? implementationType) =>
+        new(serviceType, implementationType, null);
 
-    public static RegistrationMatch Failed(DiagnosticInfo? diagnostic) => new(null, diagnostic);
+    public static RegistrationMatch Failed(DiagnosticInfo? diagnostic) => new(null, null, diagnostic);
 }

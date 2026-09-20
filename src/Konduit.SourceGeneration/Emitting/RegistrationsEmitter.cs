@@ -37,10 +37,17 @@ internal static class RegistrationsEmitter
 
         foreach (var spec in specs)
         {
-            source
-                .Line($"{Names.Registry}.Register(")
-                .Line($"    typeof({spec.InterfaceForTypeOf}),")
-                .Line($"    static (target, pipeline, services) => new {spec.ProxyTypeName}(({spec.InterfaceFullyQualified})target, pipeline, services));");
+            source.Line($"{Names.Registry}.Register(");
+            source.Line($"    typeof({spec.InterfaceForTypeOf}),");
+
+            // A specialised proxy is registered against the implementation as well, so the right one
+            // is chosen for the instance actually being wrapped.
+            if (spec.ImplementationForTypeOf is { } implementation)
+            {
+                source.Line($"    typeof({implementation}),");
+            }
+
+            source.Line($"    static (target, pipeline, services) => new {spec.ProxyTypeName}(({spec.InterfaceFullyQualified})target, pipeline, services));");
         }
 
         return source.Close().Close().Close().ToString();

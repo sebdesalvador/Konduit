@@ -20,6 +20,7 @@ internal static partial class ProxySpecFactory
 
     public static ProxySpec Create(
         INamedTypeSymbol serviceInterface,
+        INamedTypeSymbol? implementation,
         KnownTypes known,
         Location location,
         List<DiagnosticInfo> diagnostics,
@@ -37,7 +38,7 @@ internal static partial class ProxySpecFactory
             switch (member)
             {
                 case IMethodSymbol { MethodKind: MethodKind.Ordinary } method when seen.Add(SignatureKey(method)):
-                    methods.Add(CreateMethod(method, methods.Count, serviceInterface, known, location, diagnostics));
+                    methods.Add(CreateMethod(method, methods.Count, serviceInterface, implementation, known, location, diagnostics));
                     break;
 
                 case IPropertySymbol property when seen.Add(SignatureKey(property)):
@@ -53,7 +54,8 @@ internal static partial class ProxySpecFactory
         return new ProxySpec(
             serviceInterface.ToDisplayString(Signature),
             serviceInterface.ToDisplayString(TypeOf),
-            BuildProxyTypeName(serviceInterface),
+            implementation?.ToDisplayString(TypeOf),
+            BuildProxyTypeName(serviceInterface, implementation),
             EquatableArray<MethodSpec>.From(methods),
             EquatableArray<PropertySpec>.From(properties),
             EquatableArray<EventSpec>.From(events));
@@ -73,12 +75,15 @@ internal static partial class ProxySpecFactory
     private static string SignatureKey(IPropertySymbol property) =>
         $"{property.Name}[{string.Join(",", property.Parameters.Select(p => p.Type.ToDisplayString(TypeOf)))}]";
 
-    private static string BuildProxyTypeName(INamedTypeSymbol serviceInterface)
+    private static string BuildProxyTypeName(INamedTypeSymbol serviceInterface, INamedTypeSymbol? implementation)
     {
         var builder = new StringBuilder();
         var previousWasSeparator = false;
+        var source = implementation is null
+            ? serviceInterface.ToDisplayString(TypeOf)
+            : serviceInterface.ToDisplayString(TypeOf) + "_" + implementation.ToDisplayString(TypeOf);
 
-        foreach (var character in serviceInterface.ToDisplayString(TypeOf).Replace("global::", string.Empty))
+        foreach (var character in source.Replace("global::", string.Empty))
         {
             if (char.IsLetterOrDigit(character))
             {

@@ -54,18 +54,42 @@ public sealed class KonduitProxyGenerator : IIncrementalGenerator
 
         if (match.ServiceType is null)
         {
-            return new ProxyCandidate(null, EquatableArray<DiagnosticInfo>.From(diagnostics));
+            return new ProxyCandidate(null, null, EquatableArray<DiagnosticInfo>.From(diagnostics));
         }
 
         var known = new KnownTypes(context.SemanticModel.Compilation);
-        var spec = ProxySpecFactory.Create(
-            match.ServiceType,
-            known,
-            invocation.GetLocation(),
-            diagnostics,
-            cancellationToken);
+        var location = invocation.GetLocation();
 
-        return new ProxyCandidate(spec, EquatableArray<DiagnosticInfo>.From(diagnostics), known.HasModuleInitializer);
+        var shared = ProxySpecFactory.Create(match.ServiceType, null, known, location, diagnostics, cancellationToken);
+        ProxySpec? specialised = null;
+
+        if (match.ImplementationType is { } implementation)
+        {
+            // The diagnostics come from the interface's own members, so they would be identical for
+            // both specs; collecting them twice would report each one twice.
+            var duplicated = new List<DiagnosticInfo>();
+
+            var candidate = ProxySpecFactory.Create(
+                match.ServiceType,
+                implementation,
+                known,
+                location,
+                duplicated,
+                cancellationToken);
+
+            // A second proxy only earns its place when the implementation skips something the
+            // interface does not; otherwise the shared one already describes this registration.
+            if (!candidate.Methods.Equals(shared.Methods))
+            {
+                specialised = candidate;
+            }
+        }
+
+        return new ProxyCandidate(
+            shared,
+            specialised,
+            EquatableArray<DiagnosticInfo>.From(diagnostics),
+            known.HasModuleInitializer);
     }
 
     private const string MiddlewareInterface = "Konduit.IKonduitMiddleware";
@@ -129,9 +153,17 @@ public sealed class KonduitProxyGenerator : IIncrementalGenerator
 
             needsPolyfill |= !candidate.HasModuleInitializer;
 
-            if (seen.Add(candidate.Spec.InterfaceFullyQualified))
+            Collect(candidate.Spec);
+            Collect(candidate.SpecialisedSpec);
+
+            void Collect(ProxySpec? spec)
             {
-                specs.Add(candidate.Spec);
+                // Keyed by both types: one interface can have a shared proxy and a specialised one
+                // per implementation that skips extra methods.
+                if (spec is not null && seen.Add(spec.InterfaceFullyQualified + " / " + spec.ImplementationForTypeOf))
+                {
+                    specs.Add(spec);
+                }
             }
         }
 
@@ -149,8 +181,16 @@ public sealed class KonduitProxyGenerator : IIncrementalGenerator
     }
 }
 
-/// <summary>One <c>WithMiddleware&lt;T&gt;()</c> call site, resolved to a proxy to emit.</summary>
+/// <summary>One middleware call site, resolved to the proxies it needs.</summary>
+/// <param name="Spec">The proxy serving any implementation of the interface.</param>
+/// <param name="SpecialisedSpec">
+/// A proxy for the implementation this registration named, emitted only when that implementation
+/// marks methods the interface does not.
+/// </param>
+/// <param name="Diagnostics">Diagnostics to report for this call site.</param>
+/// <param name="HasModuleInitializer">Whether the compilation defines ModuleInitializerAttribute.</param>
 internal sealed record ProxyCandidate(
     ProxySpec? Spec,
+    ProxySpec? SpecialisedSpec,
     EquatableArray<DiagnosticInfo> Diagnostics,
     bool HasModuleInitializer = true);

@@ -11,7 +11,9 @@ namespace Konduit;
 /// </remarks>
 public static class KonduitProxyRegistry
 {
-    private static readonly ConcurrentDictionary<Type, KonduitProxyFactory> Factories = new();
+    // Keyed by service type and, for a proxy specialised to one implementation, that implementation.
+    // A service registered behind two implementations that skip different methods needs a proxy each.
+    private static readonly ConcurrentDictionary<(Type Service, Type? Implementation), KonduitProxyFactory> Factories = new();
 
     /// <summary>
     /// Registers the proxy factory for a service interface. Called by generated module initializers.
@@ -24,7 +26,27 @@ public static class KonduitProxyRegistry
         Throw.IfNull(serviceType);
         Throw.IfNull(factory);
 
-        Factories.TryAdd(serviceType, factory);
+        Factories.TryAdd((serviceType, null), factory);
+    }
+
+    /// <summary>
+    /// Registers a proxy factory specialised to one implementation of a service interface.
+    /// </summary>
+    /// <param name="serviceType">The service interface the proxy implements.</param>
+    /// <param name="implementationType">The implementation this proxy is specialised for.</param>
+    /// <param name="factory">Creates the proxy.</param>
+    /// <remarks>
+    /// The generator emits one of these when an implementation marks methods with
+    /// <see cref="SkipKonduitAttribute"/> that the interface does not, since a proxy shared by every
+    /// implementation could not honour them.
+    /// </remarks>
+    public static void Register(Type serviceType, Type implementationType, KonduitProxyFactory factory)
+    {
+        Throw.IfNull(serviceType);
+        Throw.IfNull(implementationType);
+        Throw.IfNull(factory);
+
+        Factories.TryAdd((serviceType, implementationType), factory);
     }
 
     /// <summary>
@@ -36,7 +58,7 @@ public static class KonduitProxyRegistry
     {
         Throw.IfNull(serviceType);
 
-        return Factories.ContainsKey(serviceType);
+        return Factories.ContainsKey((serviceType, null));
     }
 
     /// <summary>
@@ -59,10 +81,21 @@ public static class KonduitProxyRegistry
         Type serviceType,
         object target,
         KonduitDelegate pipeline,
-        IServiceProvider services) =>
-        Factories.TryGetValue(serviceType, out var factory)
+        IServiceProvider services)
+    {
+        Throw.IfNull(target);
+
+        // A proxy specialised to this implementation wins over the shared one. The lookup is by
+        // type identity alone, so nothing is reflected over and the call path stays allocation-free.
+        if (Factories.TryGetValue((serviceType, target.GetType()), out var specialised))
+        {
+            return specialised(target, pipeline, services);
+        }
+
+        return Factories.TryGetValue((serviceType, null), out var factory)
             ? factory(target, pipeline, services)
             : throw new InvalidOperationException(BuildMissingProxyMessage(serviceType));
+    }
 
     internal static string BuildMissingProxyMessage(Type serviceType) =>
         $"Konduit has no generated proxy for '{serviceType}'. The source generator emits one for each " +

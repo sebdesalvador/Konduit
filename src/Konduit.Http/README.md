@@ -57,7 +57,7 @@ The client keeps its transient lifetime, and the first middleware added is the o
 
 ## Opting out
 
-`[SkipKonduit]` on an interface method forwards it straight to the client:
+`[SkipKonduit]` forwards a method straight to the client:
 
 ```csharp
 public interface IOrderApi
@@ -68,6 +68,10 @@ public interface IOrderApi
     Task<string> PingAsync(CancellationToken cancellationToken);
 }
 ```
+
+It also works on the implementing method, which is what to use when the client interface comes from
+a generated or third-party contract you cannot annotate. `AddHttpClient<IOrderApi, OrderApi>()`
+names the implementation, so the generator reads it from there.
 
 ## When the chain is broken
 

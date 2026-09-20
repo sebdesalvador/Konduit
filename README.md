@@ -102,6 +102,27 @@ public interface IOrderService
 }
 ```
 
+When the interface belongs to a package you can't edit, put the attribute on **your implementation**
+instead:
+
+```csharp
+public sealed class OurStorage : IThirdPartyStorage   // interface you cannot annotate
+{
+    public Task<Stream> ReadAsync(string key) => ...;
+
+    [SkipKonduit]
+    public Task<bool> ExistsAsync(string key) => ...;   // no middleware for this one
+}
+
+services.AddScoped<IThirdPartyStorage, OurStorage>().WithMiddleware<LoggingMiddleware>();
+```
+
+That applies to `OurStorage` alone — another implementation behind the same interface keeps every
+method intercepted. It works because the registration **names the implementation**, so the generator
+can read it: `AddScoped<IFoo, Foo>()`, `AddScoped(typeof(IFoo), typeof(Foo))` and
+`AddHttpClient<IFoo, Foo>()` all qualify. An implementation that only ever appears inside a factory
+lambda, and is never named in any registration the generator can see, keeps its methods intercepted.
+
 **Properties, indexers and events are forwarded without interception.** So are methods Konduit
 cannot proxy — each one produces a build warning naming the method and the reason, so nothing is
 silently uninstrumented.
