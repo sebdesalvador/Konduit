@@ -16,7 +16,7 @@
     <RepositoryUrl>https://github.com/sebdesalvador/Konduit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Description>ASP.NET Core style middleware pipelines for any dependency-injected service. Register a service as usual and chain WithMiddleware&lt;T&gt;() to wrap every call in middleware that runs code before and after, with source-generated proxies and no reflection on the call path.</Description>
     <PackageTags>dependency-injection;middleware;interception;aop;source-generator;proxy</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
