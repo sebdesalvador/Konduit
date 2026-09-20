@@ -223,5 +223,11 @@ the middleware on the service that consumes it instead.
 
 ## Requirements
 
-.NET 8 or later. The source generator ships inside the `Konduit` package; no separate reference is
-needed.
+Konduit targets `netstandard2.0`, `net8.0` and `net10.0`, so it runs on **.NET Framework 4.6.1+,
+.NET Core 2.0+, .NET 5 and later, Mono, Xamarin and Unity**.
+
+**Building requires the .NET 6 SDK or later.** That is a property of the compiler, not of what you
+target: the proxies come from an incremental source generator, which needs Roslyn 4.0. You can build
+with a current SDK and still target `net472`.
+
+The source generator ships inside the `Konduit` package; no separate reference is needed.

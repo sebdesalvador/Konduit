@@ -42,7 +42,7 @@ public static class KonduitHttpClientBuilderExtensions
         this IHttpClientBuilder builder)
         where TMiddleware : class, IKonduitMiddleware
     {
-        ArgumentNullException.ThrowIfNull(builder);
+        Throw.IfNull(builder);
 
         Resolve(builder, clientType: null)
             .Add(static (provider, next) => ActivatorUtilities.CreateInstance<TMiddleware>(provider, next));
@@ -71,7 +71,7 @@ public static class KonduitHttpClientBuilderExtensions
         where TClient : class
         where TMiddleware : class, IKonduitMiddleware
     {
-        ArgumentNullException.ThrowIfNull(builder);
+        Throw.IfNull(builder);
 
         Resolve(builder, typeof(TClient))
             .Add(static (provider, next) => ActivatorUtilities.CreateInstance<TMiddleware>(provider, next));

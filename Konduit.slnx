@@ -12,6 +12,7 @@
     <Project Path="tests/Konduit.Http.Tests/Konduit.Http.Tests.csproj" />
     <Project Path="tests/Konduit.IntegrationTests/Konduit.IntegrationTests.csproj" />
     <Project Path="tests/Konduit.MediatR.Tests/Konduit.MediatR.Tests.csproj" />
+    <Project Path="tests/Konduit.NetStandardCompatibility/Konduit.NetStandardCompatibility.csproj" />
     <Project Path="tests/Konduit.SourceGeneration.Tests/Konduit.SourceGeneration.Tests.csproj" />
     <Project Path="tests/Konduit.Tests/Konduit.Tests.csproj" />
   </Folder>

@@ -55,7 +55,7 @@ public static class KonduitMediatRServiceCollectionExtensions
     [RequiresUnreferencedCode("Konduit.MediatR inspects handler types reflectively and may not survive trimming.")]
     public static KonduitMediatRBuilder AddKonduitToMediatRHandlers(this IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        Throw.IfNull(services);
 
         var registration = new MediatRRegistration();
         var wrapped = 0;

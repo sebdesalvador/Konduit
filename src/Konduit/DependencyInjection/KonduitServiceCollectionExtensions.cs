@@ -43,7 +43,7 @@ public static class KonduitServiceCollectionExtensions
         this IServiceCollection services)
         where TMiddleware : class, IKonduitMiddleware
     {
-        ArgumentNullException.ThrowIfNull(services);
+        Throw.IfNull(services);
 
         if (services.Count == 0)
         {

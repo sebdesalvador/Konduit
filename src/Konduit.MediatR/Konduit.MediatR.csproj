@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Konduit.MediatR</RootNamespace>
     <AssemblyName>Konduit.MediatR</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -40,6 +40,11 @@
       Konduit.MediatR without the generator, and their WithMiddleware calls failing at run time.
     -->
     <ProjectReference Include="../Konduit/Konduit.csproj" PrivateAssets="none" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shared with the core package rather than duplicated; netstandard2.0 only. -->
+    <Compile Include="../Konduit/Polyfills/*.cs" Link="Polyfills/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -120,5 +120,7 @@ it's worth knowing which obligations apply to your own code.
 
 ## Requirements
 
-.NET 8 or later, MediatR 14 or later. MediatR 14 also requires `services.AddLogging()` before
-`AddMediatR`.
+Targets `netstandard2.0`, `net8.0` and `net10.0`; MediatR 14 or later. Building needs the .NET 6 SDK
+or later.
+
+MediatR 14 also requires `services.AddLogging()` before `AddMediatR`.

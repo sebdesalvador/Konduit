@@ -28,11 +28,11 @@ public sealed class KonduitContext
         IServiceProvider services,
         KonduitDelegate terminal)
     {
-        ArgumentNullException.ThrowIfNull(target);
-        ArgumentNullException.ThrowIfNull(method);
-        ArgumentNullException.ThrowIfNull(arguments);
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(terminal);
+        Throw.IfNull(target);
+        Throw.IfNull(method);
+        Throw.IfNull(arguments);
+        Throw.IfNull(services);
+        Throw.IfNull(terminal);
 
         Target = target;
         Method = method;

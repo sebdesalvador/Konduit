@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Not a test project: a library that must keep compiling. It proves the packages and, more
+    importantly, the code the source generator emits are valid on netstandard2.0 — which reaches
+    .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Xamarin and Unity. Building the solution is enough
+    to catch a regression, so CI needs no extra step.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Konduit/Konduit.csproj" />
+    <ProjectReference Include="../../src/Konduit.MediatR/Konduit.MediatR.csproj" />
+    <ProjectReference Include="../../src/Konduit.Http/Konduit.Http.csproj" />
+    <ProjectReference Include="../../src/Konduit.SourceGeneration/Konduit.SourceGeneration.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

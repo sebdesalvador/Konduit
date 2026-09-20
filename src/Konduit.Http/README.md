@@ -150,5 +150,7 @@ leaving the client unwrapped.
 
 ## Requirements
 
-.NET 8 or later. The Konduit source generator flows in with this package; no separate reference is
-needed.
+Targets `netstandard2.0`, `net8.0` and `net10.0`, alongside `Microsoft.Extensions.Http`. Building
+needs the .NET 6 SDK or later, since the proxies come from an incremental source generator.
+
+The Konduit source generator flows in with this package; no separate reference is needed.

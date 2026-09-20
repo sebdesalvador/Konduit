@@ -22,7 +22,7 @@ public sealed class KonduitPipelineBuilder
     /// <exception cref="ArgumentNullException"><paramref name="factory"/> is <see langword="null"/>.</exception>
     public KonduitPipelineBuilder Use(Func<KonduitDelegate, IKonduitMiddleware> factory)
     {
-        ArgumentNullException.ThrowIfNull(factory);
+        Throw.IfNull(factory);
 
         _factories.Add(factory);
         return this;

@@ -6,7 +6,7 @@ namespace Konduit;
 /// Maps service interfaces to their generated proxy factories.
 /// </summary>
 /// <remarks>
-/// The source generator emits a <see cref="System.Runtime.CompilerServices.ModuleInitializerAttribute"/>
+/// The source generator emits a <c>[ModuleInitializer]</c>
 /// that fills this registry, so it is populated before any registration code in that assembly runs.
 /// </remarks>
 public static class KonduitProxyRegistry
@@ -21,8 +21,8 @@ public static class KonduitProxyRegistry
     /// <remarks>Registering the same interface twice is harmless; the first factory wins.</remarks>
     public static void Register(Type serviceType, KonduitProxyFactory factory)
     {
-        ArgumentNullException.ThrowIfNull(serviceType);
-        ArgumentNullException.ThrowIfNull(factory);
+        Throw.IfNull(serviceType);
+        Throw.IfNull(factory);
 
         Factories.TryAdd(serviceType, factory);
     }
@@ -34,7 +34,7 @@ public static class KonduitProxyRegistry
     /// <returns><see langword="true"/> when a proxy factory is registered.</returns>
     public static bool IsRegistered(Type serviceType)
     {
-        ArgumentNullException.ThrowIfNull(serviceType);
+        Throw.IfNull(serviceType);
 
         return Factories.ContainsKey(serviceType);
     }

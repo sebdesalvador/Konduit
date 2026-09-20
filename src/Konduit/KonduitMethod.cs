@@ -35,10 +35,10 @@ public sealed class KonduitMethod
         Type returnType,
         IReadOnlyList<KonduitParameter> parameters)
     {
-        ArgumentNullException.ThrowIfNull(declaringType);
-        ArgumentNullException.ThrowIfNull(name);
-        ArgumentNullException.ThrowIfNull(returnType);
-        ArgumentNullException.ThrowIfNull(parameters);
+        Throw.IfNull(declaringType);
+        Throw.IfNull(name);
+        Throw.IfNull(returnType);
+        Throw.IfNull(parameters);
 
         _declaringType = declaringType;
         Name = name;
