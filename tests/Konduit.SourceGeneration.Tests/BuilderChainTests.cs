@@ -94,6 +94,32 @@ public sealed class BuilderChainTests
     }
 
     [Fact]
+    public void MiddlewareAddedThroughABuilderInstanceMethodIsIgnored()
+    {
+        // Konduit.MediatR adds middleware through an instance method on its own builder, and its
+        // handlers are wrapped by hand-written decorators rather than generated proxies. There is no
+        // service type in that chain, so matching it would fail the build.
+        var result = Run("""
+            public sealed class OwnBuilder
+            {
+                public OwnBuilder WithMiddleware<TMiddleware>()
+                    where TMiddleware : class, IKonduitMiddleware => this;
+            }
+
+            public static class Startup
+            {
+                public static OwnBuilder AddOwn(this IServiceCollection services) => new();
+
+                public static void Configure(IServiceCollection services) =>
+                    services.AddOwn().WithMiddleware<Noop>();
+            }
+            """);
+
+        Assert.Empty(result.GeneratorDiagnostics);
+        Assert.Empty(result.GeneratedSources);
+    }
+
+    [Fact]
     public void AHeldBuilderWithoutAnExplicitServiceIsReportedAsKdt001()
     {
         var result = Run("""

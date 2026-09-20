@@ -74,13 +74,28 @@ public sealed class KonduitProxyGenerator : IIncrementalGenerator
     /// Reports whether a call is one of Konduit's middleware-adding extensions.
     /// </summary>
     /// <remarks>
-    /// Identified by the constraint on its middleware type parameter rather than by the declaring
-    /// class, so companion packages can add their own entry points — such as Konduit.Http's
-    /// <c>AddMiddleware</c> on <c>IHttpClientBuilder</c> — without the generator knowing about them.
+    /// Identified by two things rather than by the declaring class, so companion packages can add
+    /// their own entry points — such as Konduit.Http's <c>AddMiddleware</c> on
+    /// <c>IHttpClientBuilder</c> — without the generator knowing about them.
+    /// <para>
+    /// It must be an <b>extension method</b> whose type parameter is constrained to
+    /// <c>IKonduitMiddleware</c>. The extension requirement matters: middleware is also added
+    /// through instance methods on builders that need no generated proxy at all, such as
+    /// <c>KonduitMediatRBuilder.WithMiddleware&lt;T&gt;()</c>, whose handlers are wrapped by
+    /// hand-written decorators. Matching those would demand a service type that the chain does not
+    /// contain, and fail the build.
+    /// </para>
     /// </remarks>
     private static bool IsKonduitExtension(IMethodSymbol method)
     {
-        foreach (var parameter in (method.ReducedFrom ?? method.OriginalDefinition).TypeParameters)
+        var definition = method.ReducedFrom ?? method.OriginalDefinition;
+
+        if (!definition.IsExtensionMethod)
+        {
+            return false;
+        }
+
+        foreach (var parameter in definition.TypeParameters)
         {
             foreach (var constraint in parameter.ConstraintTypes)
             {
