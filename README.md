@@ -201,6 +201,22 @@ services.AddKonduitToMediatRHandlers()
 Commands, queries, notifications and streams all run through the same middleware you write for
 ordinary services, with `[SkipKonduit]` opting a handler out.
 
+## Typed HttpClient services
+
+`AddHttpClient<TClient, TImplementation>()` returns an `IHttpClientBuilder`, with no registration
+call to chain `WithMiddleware<T>()` onto. The companion package
+**[Konduit.Http](src/Konduit.Http/README.md)** adds `AddMiddleware<T>()`:
+
+```csharp
+services.AddHttpClient<IOrderApi, OrderApi>(c => c.BaseAddress = new Uri("https://api.example.com"))
+        .AddMiddleware<LoggingMiddleware>()
+        .AddMiddleware<RetryMiddleware>();
+```
+
+This wraps calls to *the service*, not the underlying `HttpClient`: middleware sees
+`GetAsync(7)` returning an `Order`, not a `GET /orders/7` returning `200 OK`. Reach for a
+`DelegatingHandler` when you want the HTTP exchange itself — the two compose.
+
 ## Requirements
 
 .NET 8 or later. The source generator ships inside the `Konduit` package; no separate reference is

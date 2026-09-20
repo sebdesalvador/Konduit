@@ -16,6 +16,17 @@ internal static class RegistrationFinder
 {
     public const string WithMiddlewareName = "WithMiddleware";
 
+    public const string AddMiddlewareName = "AddMiddleware";
+
+    /// <summary>Reports whether a method name is one of Konduit's middleware-adding extensions.</summary>
+    /// <remarks>
+    /// <c>WithMiddleware</c> is chained onto an <c>IServiceCollection</c> registration;
+    /// <c>AddMiddleware</c> onto builders such as <c>IHttpClientBuilder</c>, whose own extensions
+    /// are named with an <c>Add</c> prefix.
+    /// </remarks>
+    public static bool IsMiddlewareCallName(string name) =>
+        name is WithMiddlewareName or AddMiddlewareName;
+
     public static RegistrationMatch Find(
         InvocationExpressionSyntax withMiddleware,
         SemanticModel model,
@@ -26,54 +37,84 @@ internal static class RegistrationFinder
             return RegistrationMatch.Failed(null);
         }
 
-        var current = access.Expression;
+        // An overload that names the service itself, such as
+        // AddMiddleware<IOrderService, LoggingMiddleware>(), says which service it applies to and
+        // needs no walking back through the chain.
+        if (access.Name is GenericNameSyntax { TypeArgumentList.Arguments.Count: 2 }
+            && model.GetSymbolInfo(withMiddleware, cancellationToken).Symbol is IMethodSymbol { TypeArguments.Length: 2 } explicitCall)
+        {
+            return Validate(explicitCall.TypeArguments[0], withMiddleware.GetLocation());
+        }
 
-        while (true)
+        // Walk back through the chain looking for the call that named the service.
+        //
+        // Intermediate calls are skipped rather than treated as the registration, because builders
+        // such as IHttpClientBuilder are configured in the middle of the chain:
+        //
+        //     services.AddHttpClient<IOrderApi, OrderApi>(...)
+        //             .ConfigurePrimaryHttpMessageHandler(...)   <- no service type
+        //             .AddHttpMessageHandler<AuthHandler>()      <- a type, but not the service
+        //             .AddMiddleware<LoggingMiddleware>();
+        //
+        // so the first interface found walking backwards is the service being registered.
+        var current = access.Expression;
+        var sawRegistrationCall = false;
+        INamedTypeSymbol? nonInterface = null;
+        Location? nonInterfaceLocation = null;
+
+        while (current is InvocationExpressionSyntax invocation
+            && invocation.Expression is MemberAccessExpressionSyntax inner)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (current is not InvocationExpressionSyntax invocation
-                || invocation.Expression is not MemberAccessExpressionSyntax inner)
+            if (!IsMiddlewareCallName(inner.Name.Identifier.ValueText))
             {
-                return RegistrationMatch.Failed(
-                    DiagnosticInfo.Create(KonduitDiagnostics.NotChainedToRegistration, access.Name.GetLocation()));
+                sawRegistrationCall = true;
+
+                var candidate = ResolveServiceType(invocation, model, cancellationToken);
+
+                if (candidate is { TypeKind: TypeKind.Interface })
+                {
+                    return RegistrationMatch.Succeeded(candidate);
+                }
+
+                if (candidate is not null && nonInterface is null)
+                {
+                    nonInterface = candidate;
+                    nonInterfaceLocation = invocation.GetLocation();
+                }
             }
 
-            var name = inner.Name.Identifier.ValueText;
-
-            if (name == WithMiddlewareName)
-            {
-                current = inner.Expression;
-                continue;
-            }
-
-            return Extract(invocation, model, cancellationToken);
+            current = inner.Expression;
         }
+
+        // A concrete type was registered, as in services.AddScoped<OrderService>().
+        if (nonInterface is not null)
+        {
+            return RegistrationMatch.Failed(DiagnosticInfo.Create(
+                KonduitDiagnostics.ServiceTypeMustBeAnInterface,
+                nonInterfaceLocation,
+                nonInterface.ToDisplayString()));
+        }
+
+        return RegistrationMatch.Failed(DiagnosticInfo.Create(
+            sawRegistrationCall ? KonduitDiagnostics.UnknownServiceType : KonduitDiagnostics.NotChainedToRegistration,
+            access.Name.GetLocation()));
     }
 
-    private static RegistrationMatch Extract(
-        InvocationExpressionSyntax registration,
-        SemanticModel model,
-        CancellationToken cancellationToken)
+    private static RegistrationMatch Validate(ITypeSymbol? serviceType, Location location)
     {
-        var location = registration.GetLocation();
-
-        var serviceType = ResolveServiceType(registration, model, cancellationToken);
-
-        if (serviceType is null)
+        if (serviceType is not INamedTypeSymbol named)
         {
             return RegistrationMatch.Failed(DiagnosticInfo.Create(KonduitDiagnostics.UnknownServiceType, location));
         }
 
-        if (serviceType.TypeKind != TypeKind.Interface)
-        {
-            return RegistrationMatch.Failed(DiagnosticInfo.Create(
+        return named.TypeKind == TypeKind.Interface
+            ? RegistrationMatch.Succeeded(named)
+            : RegistrationMatch.Failed(DiagnosticInfo.Create(
                 KonduitDiagnostics.ServiceTypeMustBeAnInterface,
                 location,
-                serviceType.ToDisplayString()));
-        }
-
-        return RegistrationMatch.Succeeded(serviceType);
+                named.ToDisplayString()));
     }
 
     private static INamedTypeSymbol? ResolveServiceType(

@@ -39,7 +39,23 @@ public static class KonduitProxyRegistry
         return Factories.ContainsKey(serviceType);
     }
 
-    internal static object Create(
+    /// <summary>
+    /// Creates the generated proxy for a service interface.
+    /// </summary>
+    /// <param name="serviceType">The service interface to create a proxy for.</param>
+    /// <param name="target">The implementation the proxy wraps.</param>
+    /// <param name="pipeline">The middleware pipeline every intercepted call runs through.</param>
+    /// <param name="services">The provider that resolved the service.</param>
+    /// <returns>A proxy implementing <paramref name="serviceType"/>.</returns>
+    /// <remarks>
+    /// Registration extensions use this to wrap a service once they have decided which descriptor to
+    /// replace. Companion packages such as Konduit.Http build on it to support registration shapes
+    /// the core package does not know about.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// No proxy was generated for <paramref name="serviceType"/>.
+    /// </exception>
+    public static object Create(
         Type serviceType,
         object target,
         KonduitDelegate pipeline,

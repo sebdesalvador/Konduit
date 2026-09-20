@@ -3,11 +3,13 @@
     <Project Path="samples/Konduit.Sample/Konduit.Sample.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Konduit.Http/Konduit.Http.csproj" />
     <Project Path="src/Konduit.MediatR/Konduit.MediatR.csproj" />
     <Project Path="src/Konduit.SourceGeneration/Konduit.SourceGeneration.csproj" />
     <Project Path="src/Konduit/Konduit.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Konduit.Http.Tests/Konduit.Http.Tests.csproj" />
     <Project Path="tests/Konduit.IntegrationTests/Konduit.IntegrationTests.csproj" />
     <Project Path="tests/Konduit.MediatR.Tests/Konduit.MediatR.Tests.csproj" />
     <Project Path="tests/Konduit.SourceGeneration.Tests/Konduit.SourceGeneration.Tests.csproj" />

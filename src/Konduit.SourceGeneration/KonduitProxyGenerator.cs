@@ -30,11 +30,9 @@ public sealed class KonduitProxyGenerator : IIncrementalGenerator
     private static bool IsWithMiddlewareCall(SyntaxNode node) =>
         node is InvocationExpressionSyntax
         {
-            Expression: MemberAccessExpressionSyntax
-            {
-                Name: GenericNameSyntax { Identifier.ValueText: RegistrationFinder.WithMiddlewareName },
-            },
-        };
+            Expression: MemberAccessExpressionSyntax { Name: GenericNameSyntax name },
+        }
+        && RegistrationFinder.IsMiddlewareCallName(name.Identifier.ValueText);
 
     private static ProxyCandidate? Transform(GeneratorSyntaxContext context, CancellationToken cancellationToken)
     {
@@ -70,12 +68,30 @@ public sealed class KonduitProxyGenerator : IIncrementalGenerator
         return new ProxyCandidate(spec, EquatableArray<DiagnosticInfo>.From(diagnostics), known.HasModuleInitializer);
     }
 
+    private const string MiddlewareInterface = "Konduit.IKonduitMiddleware";
+
+    /// <summary>
+    /// Reports whether a call is one of Konduit's middleware-adding extensions.
+    /// </summary>
+    /// <remarks>
+    /// Identified by the constraint on its middleware type parameter rather than by the declaring
+    /// class, so companion packages can add their own entry points — such as Konduit.Http's
+    /// <c>AddMiddleware</c> on <c>IHttpClientBuilder</c> — without the generator knowing about them.
+    /// </remarks>
     private static bool IsKonduitExtension(IMethodSymbol method)
     {
-        var definition = method.ReducedFrom ?? method.OriginalDefinition;
+        foreach (var parameter in (method.ReducedFrom ?? method.OriginalDefinition).TypeParameters)
+        {
+            foreach (var constraint in parameter.ConstraintTypes)
+            {
+                if (constraint.ToDisplayString() == MiddlewareInterface)
+                {
+                    return true;
+                }
+            }
+        }
 
-        return definition.ContainingType?.Name == "KonduitServiceCollectionExtensions"
-            && definition.ContainingType.ContainingNamespace.ToDisplayString() == "Microsoft.Extensions.DependencyInjection";
+        return false;
     }
 
     private static void Execute(SourceProductionContext context, ImmutableArray<ProxyCandidate> candidates)

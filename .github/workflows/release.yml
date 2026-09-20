@@ -64,14 +64,13 @@ jobs:
 
       - name: Pack
         run: |
-          dotnet pack src/Konduit/Konduit.csproj \
-            --no-build --configuration Release \
-            -p:Version=${{ steps.version.outputs.version }} \
-            --output artifacts/packages
-          dotnet pack src/Konduit.MediatR/Konduit.MediatR.csproj \
-            --no-build --configuration Release \
-            -p:Version=${{ steps.version.outputs.version }} \
-            --output artifacts/packages
+          set -euo pipefail
+          for project in Konduit Konduit.MediatR Konduit.Http; do
+            dotnet pack "src/$project/$project.csproj" \
+              --no-build --configuration Release \
+              -p:Version=${{ steps.version.outputs.version }} \
+              --output artifacts/packages
+          done
 
       # Fail here rather than after publishing: a bad package cannot be taken back.
       - name: Verify the package layouts
@@ -83,9 +82,11 @@ jobs:
           unzip -l "$core" | grep -q 'lib/net8.0/Konduit.dll'
           unzip -l "$core" | grep -q 'lib/net10.0/Konduit.dll'
 
-          mediatr=$(ls artifacts/packages/Konduit.MediatR.*.nupkg)
-          unzip -l "$mediatr" | grep -q 'lib/net8.0/Konduit.MediatR.dll'
-          unzip -l "$mediatr" | grep -q 'lib/net10.0/Konduit.MediatR.dll'
+          for name in Konduit.MediatR Konduit.Http; do
+            package=$(ls artifacts/packages/$name.*.nupkg)
+            unzip -l "$package" | grep -q "lib/net8.0/$name.dll"
+            unzip -l "$package" | grep -q "lib/net10.0/$name.dll"
+          done
 
           echo "Package layouts are correct."
 
@@ -119,6 +120,7 @@ jobs:
           set -euo pipefail
           for package in \
             artifacts/packages/Konduit.MediatR.*.nupkg \
+            artifacts/packages/Konduit.Http.*.nupkg \
             artifacts/packages/Konduit.[0-9]*.nupkg
           do
             echo "Pushing $package"

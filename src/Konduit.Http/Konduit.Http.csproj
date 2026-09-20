@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>Konduit.Http</RootNamespace>
+    <AssemblyName>Konduit.Http</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Konduit.Http</PackageId>
+    <Version>0.2.0</Version>
+    <Authors>Sébastien de Salvador</Authors>
+    <Copyright>Copyright (c) 2026 Sébastien de Salvador</Copyright>
+    <Description>Adds Konduit middleware to typed HttpClient services. Chain AddMiddleware&lt;T&gt;() onto AddHttpClient&lt;TClient, TImplementation&gt;() to wrap calls to the client itself, rather than adding a DelegatingHandler to the underlying HttpClient.</Description>
+    <PackageTags>httpclient;typed-client;dependency-injection;middleware;interception;konduit</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/sebdesalvador/Konduit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sebdesalvador/Konduit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      PrivateAssets="none" so the Konduit source generator flows transitively. The default for a
+      ProjectReference makes analyzers private, which would leave anyone installing only
+      Konduit.Http without the generator, and their AddMiddleware calls failing at run time.
+    -->
+    <ProjectReference Include="../Konduit/Konduit.csproj" PrivateAssets="none" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

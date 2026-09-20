@@ -46,6 +46,7 @@ jobs:
         run: |
           dotnet pack src/Konduit/Konduit.csproj --no-build --configuration Release --output artifacts/packages
           dotnet pack src/Konduit.MediatR/Konduit.MediatR.csproj --no-build --configuration Release --output artifacts/packages
+          dotnet pack src/Konduit.Http/Konduit.Http.csproj --no-build --configuration Release --output artifacts/packages
 
       - name: Verify the package layouts
         run: |
@@ -58,10 +59,12 @@ jobs:
           unzip -l "$core" | grep -q 'lib/net8.0/Konduit.dll'
           unzip -l "$core" | grep -q 'lib/net10.0/Konduit.dll'
 
-          mediatr=$(ls artifacts/packages/Konduit.MediatR.*.nupkg)
-          echo "Inspecting $mediatr"
-          unzip -l "$mediatr" | grep -q 'lib/net8.0/Konduit.MediatR.dll'
-          unzip -l "$mediatr" | grep -q 'lib/net10.0/Konduit.MediatR.dll'
+          for name in Konduit.MediatR Konduit.Http; do
+            package=$(ls artifacts/packages/$name.*.nupkg)
+            echo "Inspecting $package"
+            unzip -l "$package" | grep -q "lib/net8.0/$name.dll"
+            unzip -l "$package" | grep -q "lib/net10.0/$name.dll"
+          done
 
           echo "Package layouts are correct."
 

@@ -9,9 +9,10 @@ internal static class KonduitDiagnostics
 
     public static readonly DiagnosticDescriptor NotChainedToRegistration = new(
         "KDT001",
-        "WithMiddleware<T>() must be chained onto a service registration",
-        "Konduit cannot tell which service this middleware belongs to. Chain WithMiddleware<T>() directly onto " +
-        "the registration, as in services.AddScoped<IOrderService, OrderService>().WithMiddleware<T>().",
+        "Middleware must be chained onto a service registration",
+        "Konduit cannot tell which service this middleware belongs to. Chain it directly onto the registration, " +
+        "as in services.AddScoped<IOrderService, OrderService>().WithMiddleware<T>(), or name the service " +
+        "explicitly with AddMiddleware<IOrderService, T>() when the builder is held in a variable.",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
