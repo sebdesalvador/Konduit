@@ -217,6 +217,10 @@ This wraps calls to *the service*, not the underlying `HttpClient`: middleware s
 `GetAsync(7)` returning an `Order`, not a `GET /orders/7` returning `200 OK`. Reach for a
 `DelegatingHandler` when you want the HTTP exchange itself — the two compose.
 
+Typed clients registered under a name work the same way. A **bare** named client
+(`AddHttpClient("orders")`) registers no interface, so there are no method calls to intercept; put
+the middleware on the service that consumes it instead.
+
 ## Requirements
 
 .NET 8 or later. The source generator ships inside the `Konduit` package; no separate reference is

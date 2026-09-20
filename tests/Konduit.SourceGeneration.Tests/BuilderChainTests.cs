@@ -23,6 +23,7 @@ public sealed class BuilderChainTests
         public static class FakeHttp
         {
             public static IClientBuilder AddClient<TClient, TImplementation>(this IServiceCollection services) => null!;
+            public static IClientBuilder AddNamedClient(this IServiceCollection services, string name) => null!;
             public static IClientBuilder ConfigureClient(this IClientBuilder builder, Action<string> configure) => builder;
             public static IClientBuilder AddHandler<THandler>(this IClientBuilder builder) => builder;
 
@@ -138,5 +139,22 @@ public sealed class BuilderChainTests
             "name the service explicitly",
             result.GeneratorDiagnostics[0].GetMessage(),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABuilderCallThatNamesNoServiceIsReportedAsKdt004()
+    {
+        // The shape of services.AddHttpClient("orders"): a builder, but no service interface
+        // anywhere in the chain, so there is nothing a proxy could implement.
+        var result = Run("""
+            public static class Startup
+            {
+                public static void Configure(IServiceCollection services) =>
+                    services.AddNamedClient("orders").AddMiddleware<Noop>();
+            }
+            """);
+
+        Assert.Equal(["KDT004"], result.DiagnosticIds);
+        Assert.Empty(result.GeneratedSources);
     }
 }

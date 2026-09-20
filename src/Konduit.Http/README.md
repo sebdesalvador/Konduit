@@ -93,8 +93,48 @@ Name the service explicitly and it works anywhere:
 builder.AddMiddleware<IOrderApi, LoggingMiddleware>();
 ```
 
-The explicit overload is also the answer for a client registered under a custom name, where the
-client type cannot be inferred from `builder.Name`.
+This requirement is also a safety net. The runtime resolves the client by scanning backwards, which
+is only unambiguous while `AddMiddleware` sits in the chain of its own registration — and that is
+exactly when the generator can see it. When it can't, you get a build error rather than a client
+silently wrapped in the wrong pipeline.
+
+## Named clients
+
+"Named client" covers two different registrations, and they behave differently.
+
+**A typed client with a name** works normally, including the single-parameter form:
+
+```csharp
+services.AddHttpClient<IOrderApi, OrderApi>("orders", c => c.BaseAddress = new Uri("..."))
+        .AddMiddleware<LoggingMiddleware>();
+```
+
+`builder.Name` is `"orders"` rather than `"IOrderApi"`, so the name can't identify the client — but
+the chain can, and the rule above guarantees this is unambiguous. Configuring several named clients
+one after another is fine; each resolves to its own.
+
+**A bare named client cannot be wrapped**, because there is no service to wrap:
+
+```csharp
+services.AddHttpClient("orders").AddMiddleware<LoggingMiddleware>();   // build error KDT004
+```
+
+`AddHttpClient("orders")` registers no interface. The client is reached through
+`IHttpClientFactory.CreateClient("orders")`, so there are no interface method calls to intercept —
+Konduit works through interfaces, and here there isn't one. This fails at build time, not silently.
+
+The fix is to put the middleware on the service that *uses* the named client:
+
+```csharp
+services.AddHttpClient("orders", c => c.BaseAddress = new Uri("..."));
+
+services.AddScoped<IOrderApi>(sp =>
+            new OrderApi(sp.GetRequiredService<IHttpClientFactory>().CreateClient("orders")))
+        .WithMiddleware<LoggingMiddleware>();
+```
+
+That is core Konduit's `WithMiddleware<T>()` on a factory registration — the named client keeps its
+own HTTP configuration, and the service in front of it gets the pipeline.
 
 ## How the client is found
 
